@@ -2,13 +2,13 @@ from flask import Flask, request, jsonify
 import requests
 import os
 import logging
+from datetime import datetime
 
-
+# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-
 
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 ADMIN_ID = os.getenv("ADMIN_ID")
@@ -17,47 +17,67 @@ logger.info(f"🟢 Запуск сервера...")
 logger.info(f"BOT_TOKEN установлен: {'Да' if BOT_TOKEN else 'Нет'}")
 logger.info(f"ADMIN_ID: {ADMIN_ID}")
 
-def send_to_admin(text, file_url=None, file_type="document"):
+
+def send_to_admin(user_id, username, file_url=None):
     if not BOT_TOKEN or not ADMIN_ID:
         logger.error("❌ BOT_TOKEN или ADMIN_ID не заданы!")
         return False
 
+    # Форматируем время
+    timestamp = datetime.now().strftime("%d.%m %H:%M")
+
+    # Формируем ссылку на пользователя
+    if username and username != "неизвестен":
+        user_link = f'<a href="tg://user?id={user_id}">@{username}</a>'
+    else:
+        user_link = f"<code>{user_id}</code>"
+
+    # Красивое сообщение в HTML
+    caption = (
+        "📥 <b>НОВЫЙ ЧЕК ПОЛУЧЕН</b>\n\n"
+        f"👤 Пользователь: {user_link}\n"
+        f"🆔 ID: <code>{user_id}</code>\n"
+        f"🕒 Время: {timestamp}\n\n"
+        "📎 <i>Файл чека прикреплён ниже</i>"
+    )
+
     base_url = f"https://api.telegram.org/bot{BOT_TOKEN}/"
 
     try:
-        # Отправка текста
-        logger.info(f"📤 Отправляю текст админу {ADMIN_ID}: {text}")
-        requests.post(
-            base_url + "sendMessage",
-            json={
-                "chat_id": ADMIN_ID,
-                "text": text,
-                "parse_mode": "HTML"
-            },
-            timeout=10
-        )
-
-        # Отправка файла
         if file_url:
-            if file_type == "photo":
-                logger.info(f"🖼️ Отправляю как фото: {file_url}")
-                requests.post(
-                    base_url + "sendPhoto",
-                    json={"chat_id": ADMIN_ID, "photo": file_url},
-                    timeout=10
-                )
-            else:
-                logger.info(f"📎 Отправляю как документ: {file_url}")
-                requests.post(
-                    base_url + "sendDocument",
-                    json={"chat_id": ADMIN_ID, "document": file_url},
-                    timeout=10
-                )
+            # Отправляем как документ с подписью — всё в одном сообщении!
+            logger.info(f"📤 Отправляю документ админу {ADMIN_ID} с подписью")
+            response = requests.post(
+                base_url + "sendDocument",
+                json={
+                    "chat_id": ADMIN_ID,
+                    "document": file_url,
+                    "caption": caption,
+                    "parse_mode": "HTML"
+                },
+                timeout=15
+            )
+            logger.info(f"📤 Ответ Telegram API: {response.status_code} {response.text[:200]}")
+        else:
+            # Если файла нет — отправляем только текст
+            logger.info("📤 Отправляю текстовое уведомление (без файла)")
+            response = requests.post(
+                base_url + "sendMessage",
+                json={
+                    "chat_id": ADMIN_ID,
+                    "text": caption,
+                    "parse_mode": "HTML"
+                },
+                timeout=10
+            )
+            logger.info(f"📤 Ответ Telegram API: {response.status_code} {response.text[:200]}")
 
-        return True
+        return response.status_code == 200
+
     except Exception as e:
-        logger.exception(f"💥 Ошибка при отправке: {e}")
+        logger.exception(f"💥 Ошибка при отправке в Telegram: {e}")
         return False
+
 
 @app.route('/webhook', methods=['POST'])
 def webhook():
@@ -75,9 +95,7 @@ def webhook():
         username = data.get("username", "неизвестен")
         file_url = data.get("file_url")
 
-        message = f"📎 Новый чек!\nПользователь: @{username} (ID: {user_id})"
-
-        success = send_to_admin(message, file_url)
+        success = send_to_admin(user_id, username, file_url)
 
         if success:
             logger.info("✅ Чек успешно отправлен админу")
@@ -90,10 +108,12 @@ def webhook():
         logger.exception(f"💥 Критическая ошибка в /webhook: {e}")
         return jsonify({"error": str(e)}), 500
 
+
 # Health-check для Render
 @app.route('/', methods=['GET'])
 def health():
     return "✅ Webhook server is running!\n", 200
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
