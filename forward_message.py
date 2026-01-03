@@ -4,19 +4,20 @@ import os
 
 app = Flask(__name__)
 
-BOT_TOKEN = os.getenv("6702060470:AAFIkhH6RahHKTgPfw5VVO2XxWAWepJEMQI")         # от BotFather
-ADMIN_ID = os.getenv("8373859502")           
 
-def send_to_admin(text, photo_url=None, document_url=None):
+BOT_TOKEN = os.getenv("BOT_TOKEN") 
+ADMIN_ID = os.getenv("ADMIN_ID")         
+
+def send_to_admin(text, photo_url=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/"
-    
+
     # Отправка текста
     requests.post(url + "sendMessage", json={
         "chat_id": ADMIN_ID,
         "text": text,
         "parse_mode": "HTML"
     })
-    
+
     # Если есть фото — отправим
     if photo_url:
         requests.post(url + "sendPhoto", json={
@@ -30,6 +31,11 @@ def notify():
         data = request.get_json()
         message = data.get("message", "Новое уведомление")
         photo = data.get("photo")
+
+
+        print(f"Отправка сообщения админу: {ADMIN_ID}")
+        print(f"Содержимое: {message}")
+
         send_to_admin(message, photo)
         return jsonify({"ok": True})
     except Exception as e:
