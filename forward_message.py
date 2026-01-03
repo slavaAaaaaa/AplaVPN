@@ -45,13 +45,13 @@ def send_to_admin(user_id, username, file_url=None):
 
     try:
         if file_url:
-            # Отправляем как документ с подписью — всё в одном сообщении!
-            logger.info(f"📤 Отправляю документ админу {ADMIN_ID} с подписью")
+            # ✅ Отправляем по file_id — без скачивания
+            logger.info(f"📤 Отправляю документ админу {ADMIN_ID} по file_id: {file_url}")
             response = requests.post(
                 base_url + "sendDocument",
                 json={
                     "chat_id": ADMIN_ID,
-                    "document": file_url,
+                    "document": file_url,  # ✅ Это file_id — работает!
                     "caption": caption,
                     "parse_mode": "HTML"
                 },
