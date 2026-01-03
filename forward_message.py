@@ -5,7 +5,7 @@ import os
 app = Flask(__name__)
 
 BOT_TOKEN = os.getenv("6702060470:AAFIkhH6RahHKTgPfw5VVO2XxWAWepJEMQI")         # от BotFather
-ADMIN_ID = os.getenv("1756307850")           # твой ID, например 123456789
+ADMIN_ID = os.getenv("8373859502")           
 
 def send_to_admin(text, photo_url=None, document_url=None):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/"
