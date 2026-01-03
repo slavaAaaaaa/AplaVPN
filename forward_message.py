@@ -17,9 +17,9 @@ logger.info(f"🟢 Запуск сервера...")
 logger.info(f"BOT_TOKEN установлен: {'Да' if BOT_TOKEN else 'Нет'}")
 logger.info(f"ADMIN_ID: {ADMIN_ID}")
 
-def send_to_admin(text, photo_url=None):
+def send_to_admin(text, file_url=None, file_type="document"):
     if not BOT_TOKEN or not ADMIN_ID:
-        logger.error("❌ BOT_TOKEN или ADMIN_ID не заданы в переменных окружения!")
+        logger.error("❌ BOT_TOKEN или ADMIN_ID не заданы!")
         return False
 
     base_url = f"https://api.telegram.org/bot{BOT_TOKEN}/"
@@ -27,7 +27,7 @@ def send_to_admin(text, photo_url=None):
     try:
         # Отправка текста
         logger.info(f"📤 Отправляю текст админу {ADMIN_ID}: {text}")
-        response = requests.post(
+        requests.post(
             base_url + "sendMessage",
             json={
                 "chat_id": ADMIN_ID,
@@ -36,26 +36,27 @@ def send_to_admin(text, photo_url=None):
             },
             timeout=10
         )
-        if response.status_code != 200:
-            logger.error(f"❌ Ошибка Telegram API (sendMessage): {response.text}")
 
-        # Отправка фото, если есть
-        if photo_url:
-            logger.info(f"🖼️ Отправляю фото: {photo_url}")
-            response = requests.post(
-                base_url + "sendPhoto",
-                json={
-                    "chat_id": ADMIN_ID,
-                    "photo": photo_url
-                },
-                timeout=10
-            )
-            if response.status_code != 200:
-                logger.error(f"❌ Ошибка Telegram API (sendPhoto): {response.text}")
+        # Отправка файла
+        if file_url:
+            if file_type == "photo":
+                logger.info(f"🖼️ Отправляю как фото: {file_url}")
+                requests.post(
+                    base_url + "sendPhoto",
+                    json={"chat_id": ADMIN_ID, "photo": file_url},
+                    timeout=10
+                )
+            else:
+                logger.info(f"📎 Отправляю как документ: {file_url}")
+                requests.post(
+                    base_url + "sendDocument",
+                    json={"chat_id": ADMIN_ID, "document": file_url},
+                    timeout=10
+                )
 
         return True
     except Exception as e:
-        logger.exception(f"💥 Ошибка при отправке сообщения: {e}")
+        logger.exception(f"💥 Ошибка при отправке: {e}")
         return False
 
 @app.route('/webhook', methods=['POST'])
