@@ -34,8 +34,8 @@ def update_balance(user_id, amount):
     sheet.append_row([str(user_id), "", str(amount), datetime.now().isoformat()])
     return float(amount)
 
-# === Уведомление админу (без файла!) ===
-@app.route('/notify_admin', methods=['POST'])
+
+@app.route('/webhook', methods=['POST'])
 def notify_admin():
     data = request.get_json()
     user_id = data.get("user_id")
